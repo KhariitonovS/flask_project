@@ -1,0 +1,27 @@
+name: API-service
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - templates/**
+      - app.py
+      - db.sqlite
+      - .github/workflows/docker-api-image-push.yml
+
+jobs:
+  build-container:
+    name: Build Docker container image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        run: echo "Check out the repo"
+
+      - name: Log in to Docker Hub
+        run: echo "Log in to Docker Hub"
+
+      - name: Extract metadata (tags, labels) for Docker
+        run: echo "Extract metadata (tags, labels) for Docker"
+
+      - name: Build and push Docker image
+        run: echo "Build and push Docker image"
