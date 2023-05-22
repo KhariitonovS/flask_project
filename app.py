@@ -1,8 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for
+import prometheus_client
+from flask import Response, Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
+import time
+import random
 from dotenv import load_dotenv
+import prometheus_client
+from prometheus_client.core import CollectorRegistry
+from prometheus_client import Summary, Counter, Histogram, Gauge
+from prometheus_flask_exporter import PrometheusMetrics
 
 # from config.development import DevelopmentConfig
 # from config.production import ProductionConfig
@@ -19,6 +26,13 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.debug = True
 users_seen = {}
+
+graphs = {}
+graphs['c'] = Counter('python_request_operations_total', 'The total number of processed requests')
+graphs['h'] = Histogram('python_request_duration_seconds', 'Histogram for the duration in seconds', buckets=(1, 2, 5, 6, 10))
+
+metrics = PrometheusMetrics(app)
+metrics.info('app_info', 'Application info', version='1.0.3')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, DB_NAME)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -51,6 +65,13 @@ class Todo(db.Model):
 def index():
     # show all todos
     todo_list = Todo.query.all()
+
+    start = time.time()
+    graphs['c'].inc()
+
+    time.sleep(0.100)
+    end = time.time()
+    graphs['h'].observe(end - start)
     return render_template('base.html', todo_list=todo_list)
 
 
@@ -83,6 +104,14 @@ def delete(todo_id):
 
     db.session.commit()
     return redirect(url_for("index"))
+
+
+@app.route("/metrics")
+def requests_count():
+    res = []
+    for k, v in graphs.items():
+        res.append(prometheus_client.generate_latest(v))
+    return Response(res, mimetype="text/plain")
 
 
 if __name__ == '__main__':
